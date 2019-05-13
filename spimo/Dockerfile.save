@@ -1,0 +1,23 @@
+FROM resin/raspberrypi3-debian:stretch
+
+WORKDIR /app
+
+# Install dependencies and clean-up apt sources.
+RUN apt-get update && apt-get install -y 
+
+# Install pip and numpy for both Python 3.
+RUN wget https://bootstrap.pypa.io/get-pip.
+RUN python3 get-pip.py \
+    && pip3 install numpy
+
+ADD odbcinst.ini /etc/odbcinst.ini
+RUN apt-get install gcc
+RUN apt-get update
+RUN apt-get install -y tdsodbc unixodbc-dev
+RUN apt install unixodbc-bin -y
+RUN apt-get clean -y
+
+COPY writetosql.py /root
+WORKDIR /root
+
+ENTRYPOINT python3 writedtosql.py
