@@ -3,7 +3,7 @@
 import time
 import sys
 
-EMULATE_HX711=False
+#EMULATE_HX711=False
 
 #if not EMULATE_HX711:
 import RPi.GPIO as GPIO
