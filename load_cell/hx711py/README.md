@@ -1,3 +1,13 @@
+#install 
+python setup.py install
+
+#run
+python (2.7) pedal.py to execute pedal read code
+
+#tosql
+python3 data2sql.py
+
+
 # HX711 for Raspbery Py
 ----
 Quick code credited to [underdoeg](https://github.com/underdoeg/)'s [Gist HX711.py](https://gist.github.com/underdoeg/98a38b54f889fce2b237).
