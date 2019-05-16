@@ -53,7 +53,8 @@ RUN pip install pyodbc
 RUN pip install pyserial
 
 COPY writetosql.py /root
+COPY data2sql.py /root
 COPY CRUD_pi.py /root
 WORKDIR /root
 
-ENTRYPOINT python3 writetosql.py
+ENTRYPOINT python3 data2sql.py
