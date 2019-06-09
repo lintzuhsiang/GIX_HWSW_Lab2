@@ -1,5 +1,3 @@
-
-
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
@@ -11,20 +9,23 @@
 
 const char* ssid     = STASSID;
 const char* password = STAPSK;
-const int pedalPin = D8;
-const  int buttonPin = D7;
+const int pedalPin = D1;
+const  int buttonPin = D4;
   int pedalState = 0;
   int pedalLastState = 0;
   int buttonState = 0;
-  const int GreenLED = D1;
-  const int RedLED = D3;
-  const int Speaker = D5;
+  bool startPost = false;
+  bool buttonLastState = true;
+  unsigned long buttonTime = 0;
+  const int GreenLED = D3;
+  const int RedLED = D2;
+  const int Speaker = D7;
   int pedalCount = 0;
 unsigned long pedaltime = 2000;
 
 void setup() {
 //  Serial.begin(115200);
-Serial.begin(57600);
+Serial.begin(115200);
   pinMode(GreenLED,OUTPUT);
   pinMode(RedLED,OUTPUT);
   pinMode(pedalPin,INPUT_PULLUP);
@@ -34,8 +35,12 @@ Serial.begin(57600);
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+
  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+     digitalWrite(RedLED,LOW);
+    delay(250);
+        digitalWrite(RedLED,HIGH);
+    delay(250);
     Serial.print(".");
   }
   Serial.println("");
@@ -45,19 +50,17 @@ Serial.begin(57600);
 }
 
 void PostJSON(int pedalCount){
-//    char pedalChar[16];
-//    itoa(pedalCount,pedalChar,10);
      StaticJsonBuffer<300> JSONbuffer;
     JsonObject& JSONencoder = JSONbuffer.createObject();
-    JSONencoder["patient_id"]="001";
-    JSONencoder["device_id"]="002";
-    JSONencoder["pedal"] = pedalCount;
+    JSONencoder["patient_id"]="PAT001";
+    JSONencoder["device_id"]="PED001";
+//    JSONencoder["pedal"] = pedalCount;
     
    char JSONmessageBuffer[300];
    JSONencoder.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
    Serial.println(JSONmessageBuffer);
   HTTPClient http;
-      http.begin("http://spimo.azurewebsites.net/access_db");
+      http.begin("http://spimo.azurewebsites.net/paddle_count");
       http.addHeader("Content-Type","application/json");
       int httpCode = http.POST(JSONmessageBuffer);
       String payload = http.getString();
@@ -72,23 +75,54 @@ void loop() {
   pedalState = digitalRead(pedalPin);
   buttonState = digitalRead(buttonPin);
   
-   if(buttonState == 0){
-    pedaltime = millis();
-    if (buttonState == 0 and millis()-pedaltime > 2000){    //press reset button over two seconds
-    pedalCount = 0;
-    tone(Speaker,1000); //1000Hz
-    Serial.println("button presses and buzzer sound");
-    delay(1000); //buzzer for 1 second
-    noTone(Speaker);
-   }
-  }
+//   if(buttonState == 0){
+//    pedaltime = millis();
+////    if (buttonState == 0 and millis()-pedaltime > 2000){    //press reset button over two seconds
+//    pedalCount = 0;
+//    tone(Speaker,1000); //1000Hz
+//    Serial.println("button presses and buzzer sound");
+//    delay(1000); //buzzer for 1 second
+//    noTone(Speaker);
+////   }
+//  }
   
-  Serial.println(pedalCount);
+  Serial.print("button State: ");
+  Serial.println(buttonState);
+Serial.print("button Last State: ");
+Serial.println(buttonLastState);
+Serial.print("startPost: ");
+Serial.println(startPost);
+
   if(WiFi.status()==WL_CONNECTED){
-  if(pedalLastState != pedalState){
-    if(pedalState==1){
+    while(buttonState == 0){
+      if(buttonLastState){
+        buttonTime = millis();
+        buttonLastState = false;
+      }
+      tone(Speaker,1000);
+      Serial.print(millis());
+      Serial.print("  ");
+      Serial.println(buttonTime);
+      if(buttonState ==0 and millis() - buttonTime > 1000){ //start or stop to post when press longer than 0.5 second
+         startPost = !startPost;
+         buttonLastState = true;
+//         Serial.print("startPost reverse: ");
+//         Serial.println(startPost);
+         break;
+//      }else if(buttonState == 0 and millis() - buttonTime > 500){
+//        pedalCount = 0;
+//        buttonLastState =true;
+      }
+    }
+    noTone(Speaker);
+   
+    
+    
+  if(pedalLastState != pedalState and startPost){ //and after press button
+    if(pedalState==0){
       digitalWrite(GreenLED,HIGH);
        pedalCount ++; 
+       Serial.println("pressed");
      PostJSON(pedalCount);
     }else{      
       digitalWrite(GreenLED,LOW);
@@ -96,9 +130,21 @@ void loop() {
     }
   }
   pedalLastState = pedalState;
+  if(startPost){  //if press start button, green led will blink
+    digitalWrite(GreenLED,HIGH);
+    delay(200);
+    digitalWrite(GreenLED,LOW);
+    delay(200);
+  }
+ 
   }else{
     Serial.println("not connect to Wifi...");
+    digitalWrite(RedLED,LOW);
+    delay(100);
+    digitalWrite(RedLED,HIGH);
+    delay(100);
+    
   }
-
-  delay(30000);
+ 
+  delay(100);
 }
